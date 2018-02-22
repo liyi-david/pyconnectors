@@ -168,10 +168,13 @@ def getChannelSemantics(channel, params):
         B = s.createAction("B")
         idle = s.createLocation("idle")
         pending = s.createLocation("pending")
+
         t = s.createClock("t")
         tmax = s.createVariable("tmax")
         t0 = params['t0']
         tmax.setInitialValue(t0)
+
+        pending.setInvariant(Expr.leq(t, tmax))
 
         TIMEOUT = ValueExpr(-1)
 
@@ -251,6 +254,13 @@ def getChannelSemantics(channel, params):
             .addAssignment(s.getVariableByAction(B), TIMEOUT) \
             .addAssignment(tmax, s.getVariableByAction(T))
 
+
+        s.properties['afterA'] = Pmin(Globally(
+            Expr.derive(
+                ActionTriggered(A),
+                At(pending)
+            )
+        ))
 
         s.ref = PTimer
         return s

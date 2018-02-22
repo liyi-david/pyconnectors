@@ -1,4 +1,5 @@
 from connector import *
+from .propertyexpression import *
 from .channel import getChannelSemantics
 from .composition import getMixedNode
 from .STA import *
@@ -19,7 +20,22 @@ def exprReform(expr, actvarmap, localvarmap):
         return expr.__class__(
             exprReform(expr.expr, actvarmap, localvarmap)
         )
-
+    elif isinstance(expr, SinglePropertyOperator):
+        return expr.__class__(
+            exprReform(expr.subFormulae, actvarmap, localvarmap)
+        )
+    elif isinstance(expr, Until):
+        return expr.__class__(
+            exprReform(expr.l, actvarmap, localvarmap),
+            exprReform(expr.r, actvarmap, localvarmap)
+        )
+    elif isinstance(expr, PortTriggered):
+        return ActionTriggered(list(map(
+            lambda p: actvarmap[p],
+            expr.ports
+        )))
+    elif isinstance(expr, ValueOf):
+        raise Exception()
     return expr
 
 
@@ -32,6 +48,8 @@ def getSemantics(connector, params=None):
         s = STA()
         s.ref = connector
         actlink = {}
+        adjvars = {}
+        nodevars = []
 
         def link(act1, act2):
             nonlocal actlink
@@ -42,7 +60,7 @@ def getSemantics(connector, params=None):
 
         # create actions
         for p in connector.ports:
-            s.createAction("P%d %s" % (
+            adjvars[p] = s.createAction("P%d %s" % (
                 connector.ports.index(p),
                 "IN" if p.io == PORT_IO_IN else "OUT"
             ))
@@ -81,8 +99,7 @@ def getSemantics(connector, params=None):
         # generate adjoint variables
         # only local actions are generated here
         ct = 0
-        adjvars = {}
-        nodevars = []
+
         for act in actlink:
             if act in s.actions:
                 adjvars[act] = s.getVariableByAction(act)
@@ -115,6 +132,8 @@ def getSemantics(connector, params=None):
                     namecounter[localvar.name] += 1
 
                 localvars[localvar] = s.createVariable(localvar.name + "_" + str(namecounter[localvar.name]))
+                if localvar.isClock:
+                    localvars[localvar].isClock = True
 
         # generate locations and transitions
         locs = [[]]
@@ -229,4 +248,9 @@ def getSemantics(connector, params=None):
 
 
         s.variables = list(filter(lambda v: v not in nodevars, s.variables))
+        for name in connector.properties:
+            s.addProperty(
+                name,
+                exprReform(connector.properties[name], adjvars, localvars)
+            )
         return s

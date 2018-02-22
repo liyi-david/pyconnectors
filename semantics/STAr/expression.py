@@ -36,6 +36,19 @@ class Expr:
         else:
             return AndExpr(l, r)
 
+    @classmethod
+    def lor(cls, l, r):
+        if isinstance(l, ValueExpr) and l.val == True:
+            return ValueExpr(True)
+        elif isinstance(r, ValueExpr) and r.val == True:
+            return ValueExpr(True)
+        else:
+            return OrExpr(l, r)
+
+    @classmethod
+    def derive(cls, l, r):
+        return Expr.lor(Expr.lnot(l), r)
+
 
     @classmethod
     def lnot(cls, expr):
@@ -44,6 +57,14 @@ class Expr:
     @classmethod
     def eq(cls, l, r):
         return EqExpr(l, r)
+
+    @classmethod
+    def leq(cls, l, r):
+        return LeqExpr(l, r)
+
+    @classmethod
+    def lt(cls, l, r):
+        return LtExpr(l, r)
 
     @isdist
     def getDistribution(self):
@@ -117,9 +138,25 @@ class AndExpr(BinaryExpr):
     def getOperator(self):
         return "∧"
 
+
+class OrExpr(BinaryExpr):
+    def getOperator(self):
+        return "∨"
+
+
 class EqExpr(BinaryExpr):
     def getOperator(self):
         return "="
+
+
+class LeqExpr(BinaryExpr):
+    def getOperator(self):
+        return "≤"
+
+
+class LtExpr(BinaryExpr):
+    def getOperator(self):
+        return "<"
 
 
 class DeriveExpr(BinaryExpr):

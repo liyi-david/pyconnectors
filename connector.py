@@ -44,6 +44,7 @@ class Connector:
         self.nodes = []
         self.connections = []
         self.name = _name
+        self.properties = {}
 
     def connect(self, *ports, params=None):
         assert len(ports) > 0
@@ -100,3 +101,7 @@ class Connector:
 
     def __str__(self):
         return self.name
+
+    def addProperty(self, name, prop):
+        assert name not in self.properties
+        self.properties[name] = prop

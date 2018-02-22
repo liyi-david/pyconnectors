@@ -30,7 +30,7 @@ class STA:
         return v
 
     def createLocation(self, _name):
-        l = STALocation(_name)
+        l = STALocation(_name, self)
         self.locations.append(l)
         return l
 
@@ -63,8 +63,13 @@ class STAAction:
 
 
 class STALocation:
-    def __init__(self, _identifier):
+    def __init__(self, _identifier, _parent):
         self.identifier = _identifier
+        self.invariant = None
+        self.parent = _parent
+
+    def setInvariant(self, invariant):
+        self.invariant = invariant
 
     def __str__(self):
         return self.identifier

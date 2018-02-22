@@ -55,7 +55,28 @@ class Until(PropertyExpression):
 
 class ActionTriggered(PropertyExpression):
     def __init__(self, *acts):
-        self.acts = acts
+        if len(acts) == 1 and type(acts[0]) in [list, tuple, set]:
+            self.acts = list(acts[0])
+        else:
+            self.acts = acts
 
     def __str__(self):
         return ",".join(map(lambda act:act.identifier, self.acts))
+
+
+class At(PropertyExpression):
+    def __init__(self, loc):
+        self.location = loc
+
+    def __str__(self):
+        return "@" + self.location.identifier
+
+
+class ValueOf(PropertyExpression):
+    def __init__(self, p):
+        self.port = p
+
+
+class PortTriggered(PropertyExpression):
+    def __init__(self, *ports):
+        self.ports = ports

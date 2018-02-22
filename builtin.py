@@ -1,5 +1,5 @@
 from channels import *
-from semantics.STAr.expression import *
+from semantics.STAr.propertyexpression import *
 
 """
 ARCHITECTURE OF ROUTER
@@ -116,6 +116,12 @@ StochasticChoice.connect(M0, M4, params={'dist': BinaryDistribution(0.2)})
 Filter.connect(M4, M5, params={'f': (v,  EqExpr(v, 1))})
 SyncDrain.connect(M5, M2)
 
+PRouter.addProperty("reliable", Pmin(Globally(
+    Expr.derive(
+        PortTriggered(IN),
+        Expr.lor(PortTriggered(OUT1), PortTriggered(OUT2))
+    )
+)))
 
 """
 ARCHITECTURE OF A RESET TIMER

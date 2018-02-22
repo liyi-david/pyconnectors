@@ -6,9 +6,12 @@ from semantics.STAr.expression import *
 from semantics.STAr.prism import sta2prism
 from embeddedsystem import EmbeddedSystem
 
-# sem = getSemantics(RstTimer, params={"t0": 2})
+# sem = getSemantics(PTimer, params={"t0": 2})
 # sem = getSemantics(Sync)
-sem = getSemantics(EmbeddedSystem)
+sem = getSemantics(PRouter)
+# sem = getSemantics(TTimer)
+# sem = getSemantics(EmbeddedSystem)
 # sem = getSemantics(FIFO4)
-print(sta2prism(sem))
-pass
+model, prop = sta2prism(sem)
+print(model)
+print(prop)
