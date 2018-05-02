@@ -26,10 +26,10 @@ def sta2prism(sta):
         if v.isAdjoint:
             vname = "d_" + v.ref.identifier.replace(" ", "")
             variable_map[v] = vname
-            if sta.ref.ports[sta.actions.index(v.ref)].io == PORT_IO_IN:
-                constants.append("const int %s = %d;" % (vname, sta.actions.index(v.ref)))
-            else:
-                variables.append("%s : int init 0;" % (vname))
+            # if sta.ref.ports[sta.actions.index(v.ref)].io == PORT_IO_IN:
+            #     constants.append("const int %s = %d;" % (vname, sta.actions.index(v.ref)))
+            # else:
+            variables.append("%s : int init 0;" % (vname))
 
             stname = "st_" + v.ref.identifier.replace(" ", "")
             variable_map[v.ref] = stname
@@ -37,6 +37,11 @@ def sta2prism(sta):
         else:
             variable_map[v] = v.name
             variables.append("%s : %s;" % (v.name, "clock" if v.isClock else "int"))
+
+    # generate connector clocks
+    for v in sta.ref.resetClocks:
+        variable_map[v] = v.name
+        variables.append("%s : %s;" % (v.name, "clock" if v.isClock else "int"))
 
     model += "\n"
 
@@ -78,6 +83,17 @@ def sta2prism(sta):
                     "true" if act in t.actions else "false"
                 )
             )
+
+        for v in sta.ref.resetClocks:
+            for act in t.actions:
+                if act.ref in sta.ref.resetClocks[v]:
+                    assignments[0][1].append(
+                        "%s = %s" % (
+                            v.name + "'",
+                            0
+                        )
+                    )
+                    break
 
         for v in t.assignments:
             daNew = []
@@ -137,11 +153,11 @@ def expr2prism(expr, variable_map, isPrime=False):
         return "(%s < %s)" % (expr2prism(expr.l, variable_map), expr2prism(expr.r, variable_map))
     elif isinstance(expr, OrExpr):
         return "(%s | %s)" % (expr2prism(expr.l, variable_map), expr2prism(expr.r, variable_map))
-    elif isinstance(expr, Globally):
+    elif isinstance(expr, GloballyExpr):
         return "G (%s)" % (expr2prism(expr.subFormulae, variable_map))
-    elif isinstance(expr, Pmin):
+    elif isinstance(expr, PminExpr):
         return "Pmin=? [ %s ]" % expr2prism(expr.subFormulae, variable_map)
-    elif isinstance(expr, Pmax):
+    elif isinstance(expr, PmaxExpr):
         return "Pmax=? [ %s ]" % expr2prism(expr.subFormulae, variable_map)
     elif isinstance(expr, ActionTriggered):
         return "(" + "&".join(
@@ -149,12 +165,12 @@ def expr2prism(expr, variable_map, isPrime=False):
         ) + ")"
     elif isinstance(expr, At):
         return "(loc = %d)" % (expr.location.parent.locations.index(expr.location))
-    elif isinstance(expr, ValueExpr):
-        if type(expr.val) == int:
+    elif isinstance(expr, Value):
+        if type(expr.val) in [int, float]:
             return str(expr.val)
         elif type(expr.val) == bool:
             return "true" if expr.val else "false"
-    elif isinstance(expr, Finally):
+    elif isinstance(expr, FinallyExpr):
         return "(F %s)" % expr2prism(expr.subFormulae, variable_map)
     else:
         return str(expr)

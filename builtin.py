@@ -67,61 +67,11 @@ M0, M1, M2, M3 = PLossy.createNodes(4)
 Sync.connect(IN, M0)
 StochasticChoice.connect(M0, M1, params={'dist': BinaryDistribution(0.2)})
 v = Variable(name='x')
-Filter.connect(M1, M2, params={'f': (v,  EqExpr(v, 1))})
+Filter.connect(M1, M2, params={'f': (v, EqExpr(v, 1))})
 LossySync.connect(M0, M3)
 SyncDrain.connect(M2, M3)
 Sync.connect(M3, OUT)
 
-
-"""
-ARCHITECTURE OF A PROBABILISTIC ROUTER
-        
-        M4 -Filter > M5
-        ^            v
- StochasticChoice    |
-        |            ^
-        |  ........> M2 --> OUT1
-        | .          |
-        |.           |
-        .            v
-IN --> M0 >-------< M1
-        .            ^
-         .           |
-          .          |
-           ........> M3 --> OUT2
-
-
-"""
-
-PRouter = Connector("Probabilistic Router")
-
-IN = PRouter.createPort(PORT_IO_IN)
-OUT1, OUT2 = PRouter.createPorts(2, PORT_IO_OUT)
-M0, M1, M2, M3, M4, M5 = PRouter.createNodes(6)
-
-v = Variable(name='x')
-
-Sync.connect(IN, M0)
-SyncDrain.connect(M0, M1)
-
-LossySync.connect(M0, M2)
-LossySync.connect(M0, M3)
-Sync.connect(M2, M1)
-Sync.connect(M3, M1)
-
-Sync.connect(M2, OUT1)
-Sync.connect(M3, OUT2)
-
-StochasticChoice.connect(M0, M4, params={'dist': BinaryDistribution(0.2)})
-Filter.connect(M4, M5, params={'f': (v,  EqExpr(v, 1))})
-SyncDrain.connect(M5, M2)
-
-PRouter.addProperty("reliable", Pmin(Globally(
-    Expr.derive(
-        PortTriggered(IN),
-        Expr.lor(PortTriggered(OUT1), PortTriggered(OUT2))
-    )
-)))
 
 """
 ARCHITECTURE OF A RESET TIMER
@@ -142,26 +92,8 @@ OUT = RstTimer.createPort(PORT_IO_OUT)
 v = Variable(name='x')
 
 M = RstTimer.createNode()
-PTimer.connect(IN, M, OUT, params={"t0": ValueExpr(4)})
-Map.connect(RESET, M, params={"f": (v, ValueExpr(4))})
-
-"""
-ARCHITECTURE OF A T-TIMER
-
-    [NOT CONNECTED]
-         |
-         v
-A ---- pTimer ---> B
-
-"""
-
-TTimer = Connector("t-Timer")
-
-IN = TTimer.createPort(PORT_IO_IN)
-OUT = TTimer.createPort(PORT_IO_OUT)
-
-M = TTimer.createNode()
-PTimer.connect(IN, M, OUT, params={"t0": ValueExpr(4)})
+PTimer.connect(IN, M, OUT, params={"t0": Value(4)})
+Map.connect(RESET, M, params={"f": (v, Value(4))})
 
 
 """
@@ -180,3 +112,27 @@ OUT = FIFO4.createPort(PORT_IO_OUT)
 M = FIFO4.createNode()
 FIFO2.connect(IN, M)
 FIFO2.connect(M, OUT)
+
+
+"""
+ARCHITECTURE OF A T-TIMER
+
+    [NOT CONNECTED]
+         |
+         v
+A ---- pTimer ---> B
+
+"""
+
+
+def TimerFactory(t0):
+    assert isinstance(t0, int)
+    Timer = Connector("t-Timer")
+
+    IN = Timer.createPort(PORT_IO_IN)
+    OUT = Timer.createPort(PORT_IO_OUT)
+
+    M = Timer.createNode()
+    PTimer.connect(IN, M, OUT, params={"t0": Value(t0)})
+
+    return Timer

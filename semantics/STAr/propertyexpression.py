@@ -1,10 +1,37 @@
 from .expression import *
 
-class PropertyExpression(Expr):
-    pass
+
+class Property(Expr):
+    @classmethod
+    def A(cls, subFormulae):
+        return ForallExpr(subFormulae)
+
+    @classmethod
+    def E(cls, subFormulae):
+        return ExistsExpr(subFormulae)
+
+    @classmethod
+    def G(cls, subFormulae):
+        return GloballyExpr(subFormulae)
+
+    @classmethod
+    def F(cls, subFormulae):
+        return FinallyExpr(subFormulae)
+
+    @classmethod
+    def Pmin(cls, subFormulae):
+        return PminExpr(subFormulae)
+
+    @classmethod
+    def Pmax(cls, subFormulae):
+        return PmaxExpr(subFormulae)
+
+    @classmethod
+    def U(cls, formulaeL, formulaeR):
+        return UntilExpr(formulaeL, formulaeR)
 
 
-class SinglePropertyOperator(PropertyExpression):
+class UnaryPropertyExpr(Property):
     def __init__(self, subFormulae):
         self.subFormulae = subFormulae
 
@@ -15,36 +42,37 @@ class SinglePropertyOperator(PropertyExpression):
         return "%s %s" % (self.getOperator(), str(self.subFormulae))
 
 
-class Forall(SinglePropertyOperator):
+class ForallExpr(UnaryPropertyExpr):
     def getOperator(self):
         return "∀"
 
 
-class Exists(SinglePropertyOperator):
+class ExistsExpr(UnaryPropertyExpr):
     def getOperator(self):
         return "∃"
 
 
-class Pmin(SinglePropertyOperator):
+class PminExpr(UnaryPropertyExpr):
     def getOperator(self):
         return "Pmin"
 
 
-class Pmax(SinglePropertyOperator):
+class PmaxExpr(UnaryPropertyExpr):
     def getOperator(self):
         return "Pmax"
 
-class Globally(SinglePropertyOperator):
+
+class GloballyExpr(UnaryPropertyExpr):
     def getOperator(self):
         return "G"
 
 
-class Finally(SinglePropertyOperator):
+class FinallyExpr(UnaryPropertyExpr):
     def getOperator(self):
         return "F"
 
 
-class Until(PropertyExpression):
+class UntilExpr(Property):
     def __init__(self, l, r):
         self.l = l
         self.r = r
@@ -53,7 +81,7 @@ class Until(PropertyExpression):
         return str(self.l) + " U " + str(self.r)
 
 
-class ActionTriggered(PropertyExpression):
+class ActionTriggered(Property):
     def __init__(self, *acts):
         if len(acts) == 1 and type(acts[0]) in [list, tuple, set]:
             self.acts = list(acts[0])
@@ -64,7 +92,7 @@ class ActionTriggered(PropertyExpression):
         return ",".join(map(lambda act:act.identifier, self.acts))
 
 
-class At(PropertyExpression):
+class At(Property):
     def __init__(self, loc):
         self.location = loc
 
@@ -72,11 +100,11 @@ class At(PropertyExpression):
         return "@" + self.location.identifier
 
 
-class ValueOf(PropertyExpression):
+class ValueOf(Property):
     def __init__(self, p):
         self.port = p
 
 
-class PortTriggered(PropertyExpression):
+class PortTriggered(Property):
     def __init__(self, *ports):
         self.ports = ports

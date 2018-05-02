@@ -16,7 +16,7 @@ def getMixedNode(numIn, numOut):
         t = node.createTransition().startFrom(l0) \
             .endAt(l0) \
             .setActions([act] + outActs) \
-            .setGuard(ValueExpr(True)) \
+            .setGuard(Value(True)) \
 
         for o in outActs:
             t.addAssignment(

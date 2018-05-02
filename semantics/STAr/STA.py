@@ -11,8 +11,8 @@ class STA:
         self.ref = None
         self.properties = {}
 
-    def createAction(self, _name):
-        a = STAAction(_name, self)
+    def createAction(self, _name, _ref=None):
+        a = STAAction(_name, self, _ref)
         self.actions.append(a)
         v = Variable(adjoint=a)
         self.variables.append(v)
@@ -54,9 +54,10 @@ class STA:
 
 
 class STAAction:
-    def __init__(self, _identifier, _parent):
+    def __init__(self, _identifier, _parent, _ref):
         self.identifier = _identifier
         self.parent = _parent
+        self.ref = _ref
 
     def __str__(self):
         return "%s(%s)" % (self.identifier, id(self))
@@ -82,6 +83,7 @@ class STATransition:
         self.source = None
         self.target = None
         self.actions = []
+        self.hided_actions = []
         self.guard = None
         self.assignments = {}
         self.parent = _parent
@@ -113,6 +115,10 @@ class STATransition:
         assert v in self.parent.variables
         self.assignments[v] = expr
 
+        return self
+
+    def setHidedActions(self, hided_actions):
+        self.hided_actions = hided_actions
         return self
 
     def __str__(self):

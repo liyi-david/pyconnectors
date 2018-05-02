@@ -1,6 +1,7 @@
 PORT_IO_IN = 0
 PORT_IO_OUT = 1
 
+
 class Port:
     def __init__(self, _parent, _io, _name):
         assert isinstance(_parent, Connector)
@@ -8,6 +9,7 @@ class Port:
         self.parent = _parent
         self.io = _io
         self.name = _name
+        self.idleDurationClock = None
 
     def __str__(self):
         return self.name
@@ -45,6 +47,7 @@ class Connector:
         self.connections = []
         self.name = _name
         self.properties = {}
+        self.resetClocks = {}
 
     def connect(self, *ports, params=None):
         assert len(ports) > 0
@@ -98,6 +101,18 @@ class Connector:
     def createParam(self, paramName):
         self.params.append(paramName)
         pass
+
+    def createResetClockAt(self, name, *ports):
+        for presentclk in self.resetClocks:
+            assert presentclk.name != name
+        for p in ports:
+            assert p in self.ports
+
+        from semantics.STAr.expression import Variable
+        clk = Variable(name=name)
+        clk.isClock = True
+        self.resetClocks[clk] = ports
+        return clk
 
     def __str__(self):
         return self.name

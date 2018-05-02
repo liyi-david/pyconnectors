@@ -2,6 +2,7 @@ from channels import *
 from .STA import *
 from .propertyexpression import *
 
+
 def getChannelSemantics(channel, params):
 
     # --------------------------------------------------------------------------------
@@ -15,10 +16,10 @@ def getChannelSemantics(channel, params):
             .startFrom(l0)\
             .endAt(l0)\
             .setActions([A, B])\
-            .setGuard(ValueExpr(True))\
+            .setGuard(Value(True))\
             .addAssignment(s.getVariableByAction(B), s.getVariableByAction(A))
 
-        s.addProperty("p0", Globally(DeriveExpr(ActionTriggered(A), ActionTriggered(B))))
+        s.addProperty("p0", Property.G(Expr.derive(ActionTriggered(A), ActionTriggered(B))))
         s.ref = Sync
         return s
 
@@ -33,7 +34,7 @@ def getChannelSemantics(channel, params):
             .startFrom(l0)\
             .endAt(l0)\
             .setActions([A, B]) \
-            .setGuard(ValueExpr(True))
+            .setGuard(Value(True))
 
         s.ref = SyncDrain
         return s
@@ -50,14 +51,14 @@ def getChannelSemantics(channel, params):
             .startFrom(l0)\
             .endAt(l0)\
             .setActions([A, B])\
-            .setGuard(ValueExpr(True))\
+            .setGuard(Value(True))\
             .addAssignment(s.getVariableByAction(B), s.getVariableByAction(A))
 
         s.createTransition()\
             .startFrom(l0)\
             .endAt(l0)\
             .setActions([A]) \
-            .setGuard(ValueExpr(True))
+            .setGuard(Value(True))
 
         s.ref = LossySync
         return s
@@ -77,15 +78,16 @@ def getChannelSemantics(channel, params):
             .startFrom(empty)\
             .endAt(full)\
             .setActions([A]) \
-            .setGuard(ValueExpr(True))\
+            .setGuard(Value(True))\
             .addAssignment(buf, s.getVariableByAction(A))
 
         s.createTransition()\
             .startFrom(full)\
             .endAt(empty)\
             .setActions([B])\
-            .setGuard(ValueExpr(True)) \
-            .addAssignment(s.getVariableByAction(B), buf)
+            .setGuard(Value(True)) \
+            .addAssignment(s.getVariableByAction(B), buf)\
+            .addAssignment(buf, Value(0))
 
         s.ref = FIFO1
         return s
@@ -105,14 +107,14 @@ def getChannelSemantics(channel, params):
             .startFrom(idle)\
             .endAt(prepared)\
             .setActions([]) \
-            .setGuard(ValueExpr(True))\
+            .setGuard(Value(True))\
             .addAssignment(sample, params['dist'])
 
         s.createTransition()\
             .startFrom(prepared)\
             .endAt(idle)\
             .setActions([A, B])\
-            .setGuard(ValueExpr(True)) \
+            .setGuard(Value(True)) \
             .addAssignment(s.getVariableByAction(B), sample)
 
         s.ref = StochasticChoice
@@ -154,7 +156,7 @@ def getChannelSemantics(channel, params):
             .startFrom(l0) \
             .endAt(l0) \
             .setActions([A, B]) \
-            .setGuard(ValueExpr(True)) \
+            .setGuard(Value(True)) \
             .addAssignment(s.getVariableByAction(B), Expr.replace(s.getVariableByAction(A), v, expr))
 
         s.ref = Map
@@ -176,7 +178,7 @@ def getChannelSemantics(channel, params):
 
         pending.setInvariant(Expr.leq(t, tmax))
 
-        TIMEOUT = ValueExpr(-1)
+        TIMEOUT = Value(-1)
 
         s.setInitialLocation(idle)
 
@@ -186,22 +188,22 @@ def getChannelSemantics(channel, params):
             .startFrom(idle) \
             .endAt(pending) \
             .setActions([A]) \
-            .setGuard(ValueExpr(True)) \
-            .addAssignment(t, ValueExpr(0))
+            .setGuard(Value(True)) \
+            .addAssignment(t, Value(0))
 
         s.createTransition() \
             .startFrom(idle) \
             .endAt(idle) \
             .setActions([T]) \
-            .setGuard(ValueExpr(True)) \
+            .setGuard(Value(True)) \
             .addAssignment(tmax, s.getVariableByAction(T))
 
         s.createTransition() \
             .startFrom(idle) \
             .endAt(pending) \
             .setActions([A, T]) \
-            .setGuard(ValueExpr(True)) \
-            .addAssignment(t, ValueExpr(0)) \
+            .setGuard(Value(True)) \
+            .addAssignment(t, Value(0)) \
             .addAssignment(tmax, s.getVariableByAction(T))
 
 
@@ -217,7 +219,7 @@ def getChannelSemantics(channel, params):
             .startFrom(pending) \
             .endAt(idle) \
             .setActions([T]) \
-            .setGuard(ValueExpr(True)) \
+            .setGuard(Value(True)) \
             .addAssignment(tmax, s.getVariableByAction(T))
 
         s.createTransition() \
@@ -242,7 +244,7 @@ def getChannelSemantics(channel, params):
             .endAt(pending) \
             .setActions([A, B]) \
             .setGuard(Expr.eq(t, tmax)) \
-            .addAssignment(t, ValueExpr(0)) \
+            .addAssignment(t, Value(0)) \
             .addAssignment(s.getVariableByAction(B), TIMEOUT)
 
         s.createTransition() \
@@ -250,12 +252,11 @@ def getChannelSemantics(channel, params):
             .endAt(pending) \
             .setActions([A, B, T]) \
             .setGuard(Expr.eq(t, tmax)) \
-            .addAssignment(t, ValueExpr(0)) \
+            .addAssignment(t, Value(0)) \
             .addAssignment(s.getVariableByAction(B), TIMEOUT) \
             .addAssignment(tmax, s.getVariableByAction(T))
 
-
-        s.properties['afterA'] = Pmin(Globally(
+        s.properties['afterA'] = PminExpr(GloballyExpr(
             Expr.derive(
                 ActionTriggered(A),
                 At(pending)

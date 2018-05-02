@@ -10,6 +10,7 @@ def isdist(func):
 
     return checkafter
 
+
 class Expr:
     @classmethod
     def replace(cls, expr, var, varexpr):
@@ -20,7 +21,7 @@ class Expr:
                 Expr.replace(expr.l, var, varexpr),
                 Expr.replace(expr.r, var, varexpr)
             )
-        elif isinstance(expr, SingleExpr):
+        elif isinstance(expr, UnaryExpr):
             return expr.__class__(
                 Expr.replace(expr.expr, var, varexpr)
             )
@@ -29,19 +30,23 @@ class Expr:
 
     @classmethod
     def land(cls, l, r):
-        if isinstance(l, ValueExpr) and l.val == True:
+        if isinstance(l, Value) and l.val == True:
             return r
-        elif isinstance(r, ValueExpr) and r.val == True:
+        elif isinstance(r, Value) and r.val == True:
             return l
+        elif isinstance(l, Value) and l.val == False:
+            return Value(False)
+        elif isinstance(r, Value) and r.val == False:
+            return Value(False)
         else:
             return AndExpr(l, r)
 
     @classmethod
     def lor(cls, l, r):
-        if isinstance(l, ValueExpr) and l.val == True:
-            return ValueExpr(True)
-        elif isinstance(r, ValueExpr) and r.val == True:
-            return ValueExpr(True)
+        if isinstance(l, Value) and l.val == True:
+            return Value(True)
+        elif isinstance(r, Value) and r.val == True:
+            return Value(True)
         else:
             return OrExpr(l, r)
 
@@ -52,6 +57,12 @@ class Expr:
 
     @classmethod
     def lnot(cls, expr):
+        if isinstance(expr, Value):
+            if expr.val == True:
+                return Value(False)
+            elif expr.val == False:
+                return Value(True)
+
         return NotExpr(expr)
 
     @classmethod
@@ -66,12 +77,20 @@ class Expr:
     def lt(cls, l, r):
         return LtExpr(l, r)
 
+    @classmethod
+    def geq(cls, l, r):
+        return LeqExpr(r, l)
+
+    @classmethod
+    def gt(cls, l, r):
+        return LtExpr(r, l)
+
     @isdist
     def getDistribution(self):
         raise Exception("getDistribution not defined")
 
 
-class SingleExpr(Expr):
+class UnaryExpr(Expr):
     def __init__(self, expr):
         self.expr = expr
         super().__init__()
@@ -90,7 +109,7 @@ class SingleExpr(Expr):
         return "%s %s" % (self.getOperator(), str(self.expr))
 
 
-class NotExpr(SingleExpr):
+class NotExpr(UnaryExpr):
     def __init__(self, expr):
         super().__init__(expr)
 
@@ -101,9 +120,9 @@ class NotExpr(SingleExpr):
 class BinaryExpr(Expr):
     def __init__(self, l, r):
         if not isinstance(l, Expr):
-            l = ValueExpr(l)
+            l = Value(l)
         if not isinstance(r, Expr):
-            r = ValueExpr(r)
+            r = Value(r)
 
         self.l = l
         self.r = r
@@ -164,7 +183,7 @@ class DeriveExpr(BinaryExpr):
         return "⇒"
 
 
-class ValueExpr(Expr):
+class Value(Expr):
     def __init__(self, val):
         self.val = val
         super()
@@ -175,6 +194,7 @@ class ValueExpr(Expr):
 
     def __str__(self):
         return str(self.val)
+
 
 class Variable(Expr):
     def __init__(self, adjoint=None, name=None):
@@ -208,12 +228,14 @@ class Distribution(Expr):
 
 
 class BinaryDistribution(Distribution):
-    def __init__(self, p0):
+    def __init__(self, p0, v0=Value(0), v1=Value(1)):
         """
         a distribution that generates 0 or 1
         :param p0: p0 is the probability where 0 is generated
         """
         self.p0 = p0
+        self.v0 = v0
+        self.v1 = v1
         super().__init__()
 
     def __str__(self):
@@ -222,6 +244,6 @@ class BinaryDistribution(Distribution):
     @isdist
     def getDistribution(self):
         return [
-            (self.p0, ValueExpr(0)),
-            (1 - self.p0, ValueExpr(1))
+            (self.p0, self.v0),
+            (1 - self.p0, self.v1)
         ]

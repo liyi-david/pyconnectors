@@ -1,4 +1,5 @@
 from connector import *
+
 from .propertyexpression import *
 from .channel import getChannelSemantics
 from .composition import getMixedNode
@@ -9,22 +10,24 @@ def exprReform(expr, actvarmap, localvarmap):
     if isinstance(expr, Variable):
         if expr.isAdjoint:
             return actvarmap[expr.ref]
-        else:
+        elif expr in localvarmap:
             return localvarmap[expr]
+        else:
+            return expr
     elif isinstance(expr, BinaryExpr):
         return expr.__class__(
             exprReform(expr.l, actvarmap, localvarmap),
             exprReform(expr.r, actvarmap, localvarmap)
         )
-    elif isinstance(expr, SingleExpr):
+    elif isinstance(expr, UnaryExpr):
         return expr.__class__(
             exprReform(expr.expr, actvarmap, localvarmap)
         )
-    elif isinstance(expr, SinglePropertyOperator):
+    elif isinstance(expr, UnaryPropertyExpr):
         return expr.__class__(
             exprReform(expr.subFormulae, actvarmap, localvarmap)
         )
-    elif isinstance(expr, Until):
+    elif isinstance(expr, UntilExpr):
         return expr.__class__(
             exprReform(expr.l, actvarmap, localvarmap),
             exprReform(expr.r, actvarmap, localvarmap)
@@ -60,10 +63,13 @@ def getSemantics(connector, params=None):
 
         # create actions
         for p in connector.ports:
-            adjvars[p] = s.createAction("P%d %s" % (
-                connector.ports.index(p),
-                "IN" if p.io == PORT_IO_IN else "OUT"
-            ))
+            adjvars[p] = s.createAction(
+                "P%d %s" % (
+                    connector.ports.index(p),
+                    "IN" if p.io == PORT_IO_IN else "OUT"
+                ),
+                p
+            )
 
         subconns = {}
         for conn in connector.connections:
@@ -166,6 +172,10 @@ def getSemantics(connector, params=None):
             for t in trans:
                 if t is None:
                     continue
+                if len(t.actions) == 0:
+                    if len(list(filter(lambda tr: tr is not None and tr != t, trans))) > 0:
+                        flag = False
+                        break
                 for a in t.actions:
                     if actlink[a].parent != s:
                         if len(list(filter(lambda t: t is not None and actlink[a] in t.actions, trans))) == 0:
@@ -178,8 +188,9 @@ def getSemantics(connector, params=None):
             if flag and len(list(filter(lambda t: t is not None, trans))) > 0:
                 # add the transition to s
 
-                guard = ValueExpr(True)
+                guard = Value(True)
                 acts = []
+                hided_acts = []
                 source = []
                 target = []
                 assignments = {}
@@ -194,6 +205,10 @@ def getSemantics(connector, params=None):
                         target.append(t.target)
                         acts += list(filter(
                             lambda a: a in s.actions,
+                            map(lambda a: actlink[a], t.actions)
+                        ))
+                        hided_acts += list(filter(
+                            lambda a: a not in s.actions,
                             map(lambda a: actlink[a], t.actions)
                         ))
 
@@ -242,10 +257,10 @@ def getSemantics(connector, params=None):
                     t = s.createTransition().startFrom(s.locations[locs.index(src)])\
                         .endAt(s.locations[locs.index(tgt)])\
                         .setGuard(guard)\
-                        .setActions(acts)
+                        .setActions(acts)\
+                        .setHidedActions(hided_acts)
 
                     t.assignments = assignments
-
 
         s.variables = list(filter(lambda v: v not in nodevars, s.variables))
         for name in connector.properties:
@@ -253,4 +268,21 @@ def getSemantics(connector, params=None):
                 name,
                 exprReform(connector.properties[name], adjvars, localvars)
             )
+
+        # simplify the transitions and solve urgency in s
+        for i in reversed(range(0,len(s.transitions))):
+            for j in range(0, i):
+                if s.transitions[i].source == s.transitions[j].source and \
+                    set(s.transitions[i].actions) == set(s.transitions[j].actions) and \
+                    set(s.transitions[i].hided_actions) < set(s.transitions[j].hided_actions):
+                    s.transitions[i].guard = Expr.land(
+                        s.transitions[i].guard,
+                        Expr.lnot(s.transitions[j].guard)
+                    )
+
+        s.transitions = list(filter(
+            lambda t: (not isinstance(t.guard, Value)) or (t.guard.val != False),
+            s.transitions
+        ))
+
         return s

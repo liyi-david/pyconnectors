@@ -141,7 +141,7 @@ def sta2jani(sta):
 def expr2jani(expr, variable_map):
     if isinstance(expr, Variable):
         return variable_map[expr]
-    elif isinstance(expr, ValueExpr):
+    elif isinstance(expr, Value):
         return expr.val
     elif isinstance(expr, BinaryExpr):
         return {
@@ -149,12 +149,12 @@ def expr2jani(expr, variable_map):
             "left": expr2jani(expr.l, variable_map),
             "right": expr2jani(expr.r, variable_map)
         }
-    elif isinstance(expr, SingleExpr):
+    elif isinstance(expr, UnaryExpr):
         return {
             "op": expr.getOperator(),
             "exp": expr2jani(expr.expr, variable_map)
         }
-    elif isinstance(expr, SinglePropertyOperator):
+    elif isinstance(expr, UnaryPropertyExpr):
         return {
             "op": expr.getOperator(),
             "exp": expr2jani(expr.subFormulae, variable_map)
