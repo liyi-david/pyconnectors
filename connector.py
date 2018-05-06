@@ -57,10 +57,10 @@ class Connector:
             if not isinstance(ports[i], Node):
                 assert ports[i].io == self.ports[i].io
 
-        if len(self.params) > 0:
-            assert params is not None
-            for paramname in self.params:
-                assert paramname in params
+        # if len(self.params) > 0:
+        #     assert params is not None
+        #     for paramname in self.params:
+        #         assert paramname in params
 
         conn = Connection()
         conn.ref = self
@@ -68,6 +68,7 @@ class Connector:
         conn.params = params
 
         ports[0].parent.connections.append(conn)
+        return self
 
 
     def getSemantics(self):

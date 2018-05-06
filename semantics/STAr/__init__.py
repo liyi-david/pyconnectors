@@ -38,7 +38,7 @@ def exprReform(expr, actvarmap, localvarmap):
             expr.ports
         )))
     elif isinstance(expr, ValueOf):
-        raise Exception()
+        return expr
     return expr
 
 
@@ -64,7 +64,7 @@ def getSemantics(connector, params=None):
         # create actions
         for p in connector.ports:
             adjvars[p] = s.createAction(
-                "P%d %s" % (
+                "P%d_%s" % (
                     connector.ports.index(p),
                     "IN" if p.io == PORT_IO_IN else "OUT"
                 ),
@@ -119,7 +119,8 @@ def getSemantics(connector, params=None):
                 nodevars.append(adjvars[act])
                 ct += 1
 
-        allSTAs = list(subconns.values()) + list(nodes.values())
+        # ORDER is veryyyyyyyyy important !!!!!
+        allSTAs = list(nodes.values()) + list(subconns.values())
 
         # generate local variables
         localvars = {}
@@ -146,9 +147,14 @@ def getSemantics(connector, params=None):
         synctrans = [[]]
         initialloc = []
 
+        proceeded_actions = []
+
         for sta in allSTAs:
+            # print(allSTAs.index(sta), len(allSTAs), connector.name)
             initialloc.append(sta.initialLocation)
             locsn = []
+            proceeded_actions += sta.actions
+
             for ln in sta.locations:
                 locsn += list(map(lambda l: l + [ln], locs))
 
@@ -158,109 +164,112 @@ def getSemantics(connector, params=None):
             for tn in sta.transitions + [None]:
                 synctransn += list(map(lambda ts: ts + [tn], synctrans))
 
-            synctrans = synctransn
+            synctrans = []
+            # filter the new set of sync transitions
+            for trans in synctransn:
+                isvalid = True
+                for t in trans:
+                    if t is None:
+                        continue
+                    if len(t.actions) == 0:
+                        if len(list(filter(lambda tr: tr is not None and tr != t, trans))) > 0:
+                            isvalid = False
+                            break
+                    for a in t.actions:
+                        if actlink[a].parent != s:
+                            if len(list(filter(lambda t: t is not None and actlink[a] in t.actions, trans))) == 0 and \
+                                actlink[a] in proceeded_actions:
+                                    # a action cannot be synchronized
+                                    isvalid = False
+                                    break
+                    if len(trans) == len(allSTAs) and len(list(filter(lambda lt: lt is None, trans))) == 0:
+                        isvalid = False
+
+                if isvalid:
+                    synctrans.append(trans)
+
 
         for i in range(len(locs)):
             s.createLocation("L%d" % i)
 
         s.setInitialLocation(s.locations[locs.index(initialloc)])
 
-
         # synchronize transitions
         for trans in synctrans:
-            flag = True
+            # add the transition to s
+            guard = Value(True)
+            acts = []
+            hided_acts = []
+            source = []
+            target = []
+            assignments = {}
+
             for t in trans:
                 if t is None:
+                    source.append(None)
+                    target.append(None)
                     continue
-                if len(t.actions) == 0:
-                    if len(list(filter(lambda tr: tr is not None and tr != t, trans))) > 0:
-                        flag = False
+                else:
+                    source.append(t.source)
+                    target.append(t.target)
+                    acts += list(filter(
+                        lambda a: a in s.actions,
+                        map(lambda a: actlink[a], t.actions)
+                    ))
+                    hided_acts += list(filter(
+                        lambda a: a not in s.actions,
+                        map(lambda a: actlink[a], t.actions)
+                    ))
+
+                    guard = Expr.land(
+                        guard,
+                        exprReform(t.guard, adjvars, localvars)
+                    )
+
+                    for var in t.assignments:
+                        assignments[exprReform(var, adjvars, localvars)] = exprReform(t.assignments[var], adjvars, localvars)
+
+            # remove all node variables
+            found = True
+            while found:
+                found = False
+                for v in assignments:
+                    # check whether v is a node variable
+                    if v in nodevars:
+                        guard = Expr.replace(guard, v, assignments[v])
+                        for vp in assignments:
+                            assignments[vp] = Expr.replace(assignments[vp], v, assignments[v])
+
+                        # remove this variable
+                        del assignments[v]
+                        found = True
                         break
-                for a in t.actions:
-                    if actlink[a].parent != s:
-                        if len(list(filter(lambda t: t is not None and actlink[a] in t.actions, trans))) == 0:
-                            # a action cannot be synchronized
-                            flag = False
-                            break
-                if not flag:
-                    break
 
-            if flag and len(list(filter(lambda t: t is not None, trans))) > 0:
-                # add the transition to s
-
-                guard = Value(True)
-                acts = []
-                hided_acts = []
-                source = []
-                target = []
-                assignments = {}
-
-                for t in trans:
-                    if t is None:
-                        source.append(None)
-                        target.append(None)
-                        continue
-                    else:
-                        source.append(t.source)
-                        target.append(t.target)
-                        acts += list(filter(
-                            lambda a: a in s.actions,
-                            map(lambda a: actlink[a], t.actions)
-                        ))
-                        hided_acts += list(filter(
-                            lambda a: a not in s.actions,
-                            map(lambda a: actlink[a], t.actions)
-                        ))
-
-                        guard = Expr.land(
-                            guard,
-                            exprReform(t.guard, adjvars, localvars)
-                        )
-
-                        for var in t.assignments:
-                            assignments[exprReform(var, adjvars, localvars)] = exprReform(t.assignments[var], adjvars, localvars)
-
-                # remove all node variables
-                found = True
-                while found:
-                    found = False
-                    for v in assignments:
-                        # check whether v is a node variable
-                        if v in nodevars:
-                            guard = Expr.replace(guard, v, assignments[v])
-                            for vp in assignments:
-                                assignments[vp] = Expr.replace(assignments[vp], v, assignments[v])
-
-                            # remove this variable
-                            del assignments[v]
-                            found = True
-                            break
-
-                # re-generate all possible source-target location pairs
-                locpairs = [(source, target)]
-                for i in range(len(locpairs[0][0])):
-                    if locpairs[0][0][i] is None and locpairs[0][1][i] is None:
-                        pairsnew = []
-                        for l in allSTAs[i].locations:
-                            pairsnew += list(
-                                map(
-                                    lambda lpair: (
-                                        lpair[0][:i] + [l] + lpair[0][i+1:],
-                                        lpair[1][:i] + [l] + lpair[1][i+1:]
-                                    ),
-                                    locpairs
-                                )
+            # re-generate all possible source-target location pairs
+            locpairs = [(source, target)]
+            for i in range(len(locpairs[0][0])):
+                if locpairs[0][0][i] is None and locpairs[0][1][i] is None:
+                    pairsnew = []
+                    for l in allSTAs[i].locations:
+                        pairsnew += list(
+                            map(
+                                lambda lpair: (
+                                    lpair[0][:i] + [l] + lpair[0][i+1:],
+                                    lpair[1][:i] + [l] + lpair[1][i+1:]
+                                ),
+                                locpairs
                             )
-                        locpairs = pairsnew
+                        )
+                    locpairs = pairsnew
 
-                for src, tgt in locpairs:
-                    t = s.createTransition().startFrom(s.locations[locs.index(src)])\
-                        .endAt(s.locations[locs.index(tgt)])\
-                        .setGuard(guard)\
-                        .setActions(acts)\
-                        .setHidedActions(hided_acts)
+            for src, tgt in locpairs:
+                t = s.createTransition().startFrom(s.locations[locs.index(src)])\
+                    .endAt(s.locations[locs.index(tgt)])\
+                    .setGuard(guard)\
+                    .setActions(acts)\
+                    .setHidedActions(hided_acts)
 
-                    t.assignments = assignments
+                t.assignments = assignments
 
         s.variables = list(filter(lambda v: v not in nodevars, s.variables))
         for name in connector.properties:
@@ -275,10 +284,10 @@ def getSemantics(connector, params=None):
                 if s.transitions[i].source == s.transitions[j].source and \
                     set(s.transitions[i].actions) == set(s.transitions[j].actions) and \
                     set(s.transitions[i].hided_actions) < set(s.transitions[j].hided_actions):
-                    s.transitions[i].guard = Expr.land(
-                        s.transitions[i].guard,
-                        Expr.lnot(s.transitions[j].guard)
-                    )
+                        s.transitions[i].guard = Expr.land(
+                            s.transitions[i].guard,
+                            Expr.lnot(s.transitions[j].guard)
+                        )
 
         s.transitions = list(filter(
             lambda t: (not isinstance(t.guard, Value)) or (t.guard.val != False),

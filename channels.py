@@ -19,6 +19,7 @@ FIFO1 = Connector("FIFO1")
 FIFO1.createPort(PORT_IO_IN)
 FIFO1.createPort(PORT_IO_OUT)
 FIFO1.setTypeChannel()
+FIFO1.createParam("default_value")
 
 StochasticChoice = Connector("StochasticChoice")
 StochasticChoice.createPort(PORT_IO_IN)

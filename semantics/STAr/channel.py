@@ -89,6 +89,18 @@ def getChannelSemantics(channel, params):
             .addAssignment(s.getVariableByAction(B), buf)\
             .addAssignment(buf, Value(0))
 
+        if params is not None and 'default_value' in params:
+            # the FIFO is not empty
+            default = s.createLocation("default")
+            s.setInitialLocation(default)
+            s.createTransition() \
+                .startFrom(default) \
+                .endAt(full) \
+                .setActions([]) \
+                .setGuard(Value(True)) \
+                .addAssignment(buf, params['default_value'])
+
+
         s.ref = FIFO1
         return s
 

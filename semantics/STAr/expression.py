@@ -70,6 +70,10 @@ class Expr:
         return EqExpr(l, r)
 
     @classmethod
+    def neq(cls, l, r):
+        return Expr.lnot(Expr.eq(l, r))
+
+    @classmethod
     def leq(cls, l, r):
         return LeqExpr(l, r)
 

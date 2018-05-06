@@ -26,6 +26,7 @@ def sta2prism(sta):
         if v.isAdjoint:
             vname = "d_" + v.ref.identifier.replace(" ", "")
             variable_map[v] = vname
+            variable_map[v.ref.ref] = vname
             # if sta.ref.ports[sta.actions.index(v.ref)].io == PORT_IO_IN:
             #     constants.append("const int %s = %d;" % (vname, sta.actions.index(v.ref)))
             # else:
@@ -147,6 +148,8 @@ def expr2prism(expr, variable_map, isPrime=False):
         return "(%s & %s)" % (expr2prism(expr.l, variable_map), expr2prism(expr.r, variable_map))
     elif isinstance(expr, NotExpr):
         return "(!%s)" % expr2prism(expr.expr, variable_map)
+    elif isinstance(expr, EqExpr):
+        return "(%s = %s)" % (expr2prism(expr.l, variable_map), expr2prism(expr.r, variable_map))
     elif isinstance(expr, LeqExpr):
         return "(%s <= %s)" % (expr2prism(expr.l, variable_map), expr2prism(expr.r, variable_map))
     elif isinstance(expr, LtExpr):
@@ -172,6 +175,10 @@ def expr2prism(expr, variable_map, isPrime=False):
             return "true" if expr.val else "false"
     elif isinstance(expr, FinallyExpr):
         return "(F %s)" % expr2prism(expr.subFormulae, variable_map)
+    elif isinstance(expr, UntilExpr):
+        return "(%s) U (%s)" % (expr2prism(expr.l, variable_map), expr2prism(expr.r, variable_map))
+    elif isinstance(expr, ValueOf):
+        return "%s" % (variable_map[expr.port])
     else:
         return str(expr)
 

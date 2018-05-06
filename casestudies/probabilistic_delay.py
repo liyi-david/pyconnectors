@@ -20,19 +20,38 @@ PTimer.connect(E, G, F, params={'t0': 2})
 SyncDrain.connect(F, D)
 LossySync.connect(D, B)
 
-delaytime = PDelay.createResetClockAt("delaytime", A, B)
 
-# PDelay.addProperty(
+# # PDelay testbench
+# PDelayTestbench = Connector("testbench")
+# A = PDelayTestbench.createPort(PORT_IO_OUT)
+# M0, M1 = PDelayTestbench.createNodes(2)
+# FIFO1.connect(M0, M1, params={'default_value': Value(1)})
+# PDelay.connect(M1, A)
+#
+# PDelayTestbench.addProperty(
 #     "prop",
 #     Property.Pmin(
-#         Property.U(
-#             Expr.lnot(PortTriggered(B)),
-#             Expr.geq(Variable("t_0"), Value(2))
+#         Property.F(
+#             Expr.land(Expr.leq(delaytime, 1), PortTriggered(A))
 #         )
 #     )
 # )
 
+delaytime = PDelay.createResetClockAt("delaytime", A)
+PDelay.addProperty(
+    "maximum probability",
+    Property.derive(
+        PortTriggered(A),
+        Property.geq(
+            Property.Pmax(Property.U(Property.leq(delaytime, Value(1)), PortTriggered(B))),
+            Value(0.8)
+        )
+    )
+)
 
-model, prop = sta2prism(getSemantics(PDelay))
-print(model)
-print(prop)
+if __name__ == "__main__":
+    sem = getSemantics(PDelay)
+    model, prop = sta2prism(sem)
+
+    print(model)
+    print(prop)
