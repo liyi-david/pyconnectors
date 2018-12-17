@@ -77,13 +77,16 @@ class Connector:
     def createInstance(self):
         pass
 
-    def createPort(self, io):
-        p = Port(self, io, "P%d" % len(self.ports))
+    def createPort(self, io, name):
+        p = Port(self, io, "P" + name)
+        for existing_port in self.ports:
+            if p.name == existing_port.name:
+                raise KeyError("cannot create two ports with the same name %s" % p.name)
         self.ports.append(p)
         return p
 
-    def createPorts(self, numPorts, io):
-        return (self.createPort(io) for _ in range(numPorts))
+    def createPorts(self, io, *names):
+        return (self.createPort(io, name) for name in names)
 
     def createNode(self):
         n = Node(self, "N%d" % len(self.nodes))

@@ -64,8 +64,8 @@ def getSemantics(connector, params=None):
         # create actions
         for p in connector.ports:
             adjvars[p] = s.createAction(
-                "P%d_%s" % (
-                    connector.ports.index(p),
+                "%s_%s" % (
+                    p.name,
                     "IN" if p.io == PORT_IO_IN else "OUT"
                 ),
                 p

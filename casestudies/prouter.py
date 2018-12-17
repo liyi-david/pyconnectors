@@ -6,45 +6,45 @@ from semantics.STAr.prism import sta2prism
 """
 ARCHITECTURE OF A PROBABILISTIC ROUTER
 
-        M4 -Filter > M5
+        A' -Filter > B'
         ^            v
  StochasticChoice    |
         |            ^
-        |  ........> M2 --> OUT1
+        |  ........> B --> E
         | .          |
         |.           |
         .            v
-IN --> M0 >-------< M1
+A   --> M  >-------< C
         .            ^
          .           |
           .          |
-           ........> M3 --> OUT2
+           ........> D --> F
 
 
 """
 
 PRouter = Connector("Probabilistic Router")
 
-A = PRouter.createPort(PORT_IO_IN)
-E, F = PRouter.createPorts(2, PORT_IO_OUT)
-M0, M1, M2, M3, M4, M5 = PRouter.createNodes(6)
+A = PRouter.createPort(PORT_IO_IN, 'A')
+E, F = PRouter.createPorts(PORT_IO_OUT, 'E', 'F')
+M, C, B, D, A1, B1 = PRouter.createNodes(6)
 
 v = Variable(name='x')
 
-Sync.connect(A, M0)
-SyncDrain.connect(M0, M1)
+Sync.connect(A, M)
+SyncDrain.connect(M, C)
 
-LossySync.connect(M0, M2)
-LossySync.connect(M0, M3)
-Sync.connect(M2, M1)
-Sync.connect(M3, M1)
+LossySync.connect(M, B)
+LossySync.connect(M, D)
+Sync.connect(B, C)
+Sync.connect(D, C)
 
-Sync.connect(M2, E)
-Sync.connect(M3, F)
+Sync.connect(B, E)
+Sync.connect(D, F)
 
-StochasticChoice.connect(M0, M4, params={'dist': BinaryDistribution(0.2)})
-Filter.connect(M4, M5, params={'f': (v, EqExpr(v, 1))})
-SyncDrain.connect(M5, M2)
+StochasticChoice.connect(M, A1, params={'dist': BinaryDistribution(0.2)})
+Filter.connect(A1, B1, params={'f': (v, EqExpr(v, 1))})
+SyncDrain.connect(B1, B)
 
 PRouter.addProperty(
     "message will not get lost",
@@ -57,4 +57,4 @@ PRouter.addProperty(
 )
 
 model, prop = sta2prism(getSemantics(PRouter))
-print(model, prop)
+print(model, "\n", prop)

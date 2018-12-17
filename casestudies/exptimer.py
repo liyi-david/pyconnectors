@@ -9,11 +9,14 @@ t = 2
 v = Variable('x')
 
 
-A = EXPTimer.createPort(PORT_IO_IN)
-H = EXPTimer.createPort(PORT_IO_OUT)
+A = EXPTimer.createPort(PORT_IO_IN, 'A')
+H = EXPTimer.createPort(PORT_IO_OUT, 'H')
 A0, H0 = EXPTimer.createNodes(2)
-B, C, D0, D1, D2, E, F, G = EXPTimer.createNodes(8)
+D0, D1, D2 = EXPTimer.createNodes(3)
 Router.connect(D0, D1, D2)
+
+B, C, E, F, G = EXPTimer.createNodes(5)
+
 Sync.connect(A, A0)
 Sync.connect(E, H0)
 Sync.connect(H0, H)
@@ -29,7 +32,7 @@ Map.connect(G, H0, params={'f': (v, TIMEOUT)})
 
 EXPTimer.addProperty(
     "reset",
-    Property.geq(
+    Property.eq(
         Property.Pmax(
             Property.G(
                 Expr.derive(

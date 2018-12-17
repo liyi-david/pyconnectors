@@ -7,8 +7,8 @@ from semantics.STAr.prism import sta2prism
 
 PDelay = Connector("Probabilistic Delay")
 
-A = PDelay.createPort(PORT_IO_IN)
-B = PDelay.createPort(PORT_IO_OUT)
+A = PDelay.createPort(PORT_IO_IN, 'A')
+B = PDelay.createPort(PORT_IO_OUT, 'B')
 
 C, D, E, F, G = PDelay.createNodes(5)
 
@@ -44,7 +44,7 @@ PDelay.addProperty(
         PortTriggered(A),
         Property.geq(
             Property.Pmax(Property.U(Property.leq(delaytime, Value(1)), PortTriggered(B))),
-            Value(0.8)
+            Value(0.9)
         )
     )
 )

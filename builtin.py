@@ -16,8 +16,8 @@ IN --> M0 >-< M1
 
 Router = Connector("Router")
 
-IN = Router.createPort(PORT_IO_IN)
-OUT1, OUT2 = Router.createPorts(2, PORT_IO_OUT)
+IN = Router.createPort(PORT_IO_IN, 'A')
+OUT1, OUT2 = Router.createPorts(PORT_IO_OUT, 'B', 'C')
 M0, M1, M2, M3 = Router.createNodes(4)
 
 Sync.connect(IN, M0)
@@ -40,8 +40,8 @@ IN --[]--> --[]--> OUT
 
 
 FIFO2 = Connector("FIFO2")
-IN = FIFO2.createPort(PORT_IO_IN)
-OUT = FIFO2.createPort(PORT_IO_OUT)
+IN = FIFO2.createPort(PORT_IO_IN, 'A')
+OUT = FIFO2.createPort(PORT_IO_OUT, 'B')
 
 M = FIFO2.createNode()
 
@@ -59,8 +59,8 @@ IN - Sync -> M0                                      |
 """
 
 PLossy = Connector("Probabilistic Lossy")
-IN = PLossy.createPort(PORT_IO_IN)
-OUT = PLossy.createPort(PORT_IO_OUT)
+IN = PLossy.createPort(PORT_IO_IN, 'A')
+OUT = PLossy.createPort(PORT_IO_OUT, 'B')
 
 M0, M1, M2, M3 = PLossy.createNodes(4)
 
@@ -86,8 +86,8 @@ A ---- pTimer ---> B
 """
 RstTimer = Connector("Reset Timer")
 
-IN, RESET = RstTimer.createPorts(2, PORT_IO_IN)
-OUT = RstTimer.createPort(PORT_IO_OUT)
+IN, RESET = RstTimer.createPorts(PORT_IO_IN, 'A', 'R')
+OUT = RstTimer.createPort(PORT_IO_OUT, 'B')
 
 v = Variable(name='x')
 
@@ -106,8 +106,8 @@ This connector is used to test the connection between two connectors instead of 
 """
 
 FIFO4 = Connector("FIFO4")
-IN = FIFO4.createPort(PORT_IO_IN)
-OUT = FIFO4.createPort(PORT_IO_OUT)
+IN = FIFO4.createPort(PORT_IO_IN, 'A')
+OUT = FIFO4.createPort(PORT_IO_OUT, 'B')
 
 M = FIFO4.createNode()
 FIFO2.connect(IN, M)
